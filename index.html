@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Casually Lying</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anonymous+Pro&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f1dcdc;
+      --bg-intro: rgba(224, 121, 121, 0.2);
+      --ink: #090000;
+      --button: #ea9b9c;
+    }
+
+    /* Animatable gradient stops for the orb glow */
+    @property --core { syntax: "<percentage>"; inherits: false; initial-value: 22%; }
+    @property --mid  { syntax: "<percentage>"; inherits: false; initial-value: 72%; }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Anonymous Pro", monospace;
+      font-size: 12px;
+    }
+    body[data-screen="intro"] { background: var(--bg-intro); }
+
+    button {
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+    }
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+    button:disabled { opacity: 0.35; cursor: default; }
+
+    /* Mobile-first: Figma frames are 393 x 852 */
+    .screen {
+      max-width: 393px;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 0 16px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .copy {
+      width: 284px;
+      max-width: 100%;
+      margin: 0;
+      line-height: normal;
+    }
+    .copy p { margin: 0; }
+
+    /* Screen 1 */
+    .screen--intro { padding-top: 208px; }
+    .eye { position: relative; width: 276px; height: 254px; flex: none; }
+    .eye img { position: absolute; display: block; }
+    .eye__iris  { inset: 0; width: 100%; height: 100%; }
+    .eye__white { left: 45px;  top: 151px; width: 39px; height: 38px; }
+    .eye__black { left: 191px; top: 42px;  width: 39px; height: 38px; }
+    .screen--intro .copy { margin-top: 51px; }
+
+    .begin {
+      margin-top: 79px;
+      width: 161px;
+      height: 43px;
+      border-radius: 12px;
+      background: var(--button);
+      color: #fff;
+      font-size: 24px;
+    }
+
+    /* Screens 2-5 */
+    .screen--question { padding-top: 240px; }
+    .orb {
+      position: relative;
+      width: 259px;
+      height: 241px;
+      margin-top: 58px;
+      flex: none;
+    }
+    .orb__fill {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(closest-side, var(--c1) var(--core), var(--c2) var(--mid), var(--c3) 100%);
+    }
+    /* While recording, the centre colour swells outward and recedes */
+    .orb--live .orb__fill { animation: glow 2.4s ease-in-out infinite; }
+    @keyframes glow {
+      0%, 100% { --core: 22%; --mid: 72%; filter: brightness(1); }
+      50%      { --core: 55%; --mid: 92%; filter: brightness(1.12); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .orb--live .orb__fill { animation: none; }
+    }
+
+    /* Written answer: created only when "in writing" is chosen, then rises into place */
+    .write-box {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      resize: none;
+      border: 1px solid var(--ink);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.55);
+      padding: 12px;
+      font: inherit;
+      color: var(--ink);
+      animation: rise 0.45s ease-out;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(40px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .write-box { animation: none; }
+    }
+
+    .alt-mode { margin-top: 35px; width: 282px; max-width: 100%; text-align: center; }
+    .nav-row {
+      margin-top: 43px;
+      width: 281px;
+      max-width: 100%;
+      display: flex;
+      justify-content: space-between;
+    }
+    .record {
+      margin-top: 29px;
+      width: 217px;
+      height: 33px;
+      border-radius: 12px;
+      background: var(--button);
+      color: #fff;
+      font-size: 14px;
+    }
+    .record[aria-pressed="true"] { background: #d9686a; }
+    .back { margin-top: 60px; }
+    .status { margin: 10px 0 0; min-height: 1.2em; text-align: center; max-width: 284px; }
+
+    /* Screen 6 */
+    .screen--thanks { padding-top: 220px; }
+    .orb-thanks { display: block; width: 130px; height: 214px; }
+    .screen--thanks .copy { margin-top: 77px; }
+
+    .who { margin-top: 40px; width: 284px; max-width: 100%; text-align: center; }
+    .who__choices { margin-top: 12px; display: flex; justify-content: space-between; }
+    .who__form { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .who__form input {
+      font: inherit;
+      color: var(--ink);
+      padding: 8px 10px;
+      border: 1px solid var(--ink);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+    .who__send {
+      align-self: center;
+      width: 120px;
+      height: 33px;
+      border-radius: 12px;
+      background: var(--button);
+      color: #fff;
+      font-size: 14px;
+    }
+    .thanks-label { margin-top: 60px; }
+    .again { margin-top: 51px; }
+  </style>
+</head>
+<body data-screen="intro">
+
+  <!-- Screen 1 -->
+  <main class="screen screen--intro" data-screen="intro">
+    <div class="eye" aria-hidden="true">
+      <img class="eye__iris"  src="assets/eye.svg" alt="">
+      <img class="eye__white" src="assets/pupil-white.svg" alt="">
+      <img class="eye__black" src="assets/pupil-black.svg" alt="">
+    </div>
+    <div class="copy">
+      <p>Thank you for agreeing to be a part of my research on honesty and everyday communication. Your input means the world to me as I conduct my interviews.</p>
+      <p>You'll be asked to answer 4 questions by audio message. Your recordings will not be shared with anyone and will be used for research purposes only.</p>
+    </div>
+    <button class="begin" type="button" data-go="next">LET’S BEGIN</button>
+  </main>
+
+  <!-- Screens 2-5 are generated from QUESTIONS below -->
+  <div id="questions"></div>
+
+  <!-- Screen 6 -->
+  <main class="screen screen--thanks" data-screen="thanks" hidden>
+    <img class="orb-thanks" src="assets/orb-thanks.svg" alt="">
+    <p class="copy">Thank you, truly. Your participation means the world to me. This project and installation will be on view in May 2027, and I'll share more as the date gets closer. :)</p>
+
+    <section class="who" id="who">
+      <p>WOULD YOU LIKE TO SHARE WHO YOU ARE?</p>
+      <div class="who__choices">
+        <button type="button" id="who-anon">STAY ANONYMOUS</button>
+        <button type="button" id="who-named">TELL YOU WHO I AM</button>
+      </div>
+      <form class="who__form" id="who-form" hidden>
+        <input type="text" id="who-name" placeholder="YOUR NAME" autocomplete="name" required>
+        <input type="text" id="who-contact" placeholder="EMAIL OR PHONE (OPTIONAL)" autocomplete="email">
+        <button class="who__send" type="submit">SEND</button>
+      </form>
+      <p class="status" id="who-status" role="status"></p>
+    </section>
+
+    <p class="thanks-label">THANK YOU</p>
+    <button class="again" type="button" id="again">START AGAIN</button>
+  </main>
+
+  <script>
+    // Paste the Google Apps Script web app URL here (see README.md).
+    const SUBMISSION_URL = "";
+
+    // Open index.html?preview to click through the flow without uploading anything.
+    const PREVIEW = new URLSearchParams(location.search).has("preview");
+
+    const QUESTIONS = [
+      { text: "1.DESCRIBE A MOMENT WHEN YOU CHOSE TO SAY LESS OR SOMETHING DIFFERENT BECAUSE IT FELT SAFER",
+        colors: ["#F2D309", "#EE390C", "#E90E0E"] },
+      { text: "2.HOW WOULD YOU PERSONALLY DEFINE DECEPTION? AND IS DECEPTION ALWAYS A GOOD OR BAD THING?",
+        colors: ["#095FF2", "#0CC8EE", "#0EE9E5"] },
+      { text: "3.TELL ME ABOUT A TIME SOMEONE LIED TO YOU AND YOU WERE GLAD THEY DID",
+        colors: ["#F20976", "#C40CEE", "#8F72EF"] },
+      { text: "4.WHO DO YOU FEEL MOST LIKE YOURSELF AROUND, AND WHAT DO YOU DO DIFFERENTLY WITH EVERYONE ELSE?",
+        colors: ["#09EAF2", "#21E26B", "#72EFBD"] },
+    ];
+
+    const ALT_WRITE = "SUBMIT YOUR ANSWER IN WRITING INSTEAD";
+    const ALT_RECORD = "RECORD YOUR ANSWER INSTEAD";
+
+    const answers = QUESTIONS.map(() => ({ audio: null, text: "" }));
+    const controllers = [];
+    let sessionId = crypto.randomUUID();
+    let current = 0;
+    let recorder = null;
+
+    // ---- Build screens 2-5 ----
+    const host = document.getElementById("questions");
+    QUESTIONS.forEach((q, i) => {
+      const last = i === QUESTIONS.length - 1;
+      const el = document.createElement("main");
+      el.className = "screen screen--question";
+      el.dataset.screen = "q" + i;
+      el.hidden = true;
+      el.innerHTML = `
+        <p class="copy"></p>
+        <div class="orb">
+          <div class="orb__fill"></div>
+        </div>
+        <button class="alt-mode" type="button">${ALT_WRITE}</button>
+        <div class="nav-row">
+          <button type="button" data-act="rerecord">RE-RECORD</button>
+          <button type="button" data-act="next" disabled>${last ? "SUBMIT" : "NEXT"}</button>
+        </div>
+        <button class="record" type="button" aria-pressed="false">TAP TO START, TAP TO STOP</button>
+        <p class="status" role="status"></p>
+        <button class="back" type="button" data-act="back">BACK</button>`;
+      el.querySelector(".copy").textContent = q.text;
+      const fill = el.querySelector(".orb__fill");
+      fill.style.setProperty("--c1", q.colors[0]);
+      fill.style.setProperty("--c2", q.colors[1]);
+      fill.style.setProperty("--c3", q.colors[2]);
+      host.appendChild(el);
+    });
+
+    const screens = [...document.querySelectorAll("main.screen")]; // intro, q1-q4, thanks
+
+    function show(i) {
+      stopRecording();
+      current = i;
+      screens.forEach((s, n) => { s.hidden = n !== i; });
+      document.body.dataset.screen = i === 0 ? "intro" : "other";
+      window.scrollTo(0, 0);
+    }
+
+    function stopRecording() {
+      if (recorder && recorder.state !== "inactive") recorder.stop();
+    }
+
+    // ---- Per-question behaviour ----
+    QUESTIONS.forEach((q, i) => {
+      const el = screens[i + 1];
+      const orb = el.querySelector(".orb");
+      const fill = el.querySelector(".orb__fill");
+      const altBtn = el.querySelector(".alt-mode");
+      const recBtn = el.querySelector(".record");
+      const nextBtn = el.querySelector('[data-act="next"]');
+      const status = el.querySelector(".status");
+      const last = i === QUESTIONS.length - 1;
+      let box = null; // the writing rectangle only exists while "in writing" is chosen
+
+      const setStatus = msg => { status.textContent = msg; };
+      const refresh = () => { nextBtn.disabled = !(answers[i].audio || answers[i].text.trim()); };
+
+      function openWriting() {
+        stopRecording();
+        box = document.createElement("textarea");
+        box.className = "write-box";
+        box.setAttribute("aria-label", "Your written answer");
+        box.value = answers[i].text;
+        box.addEventListener("input", () => { answers[i].text = box.value; refresh(); });
+        orb.appendChild(box);
+        fill.hidden = true;
+        recBtn.hidden = true;
+        altBtn.textContent = ALT_RECORD;
+        box.focus();
+      }
+
+      function closeWriting() {
+        if (box) { box.remove(); box = null; }
+        fill.hidden = false;
+        recBtn.hidden = false;
+        altBtn.textContent = ALT_WRITE;
+      }
+
+      altBtn.addEventListener("click", () => (box ? closeWriting() : openWriting()));
+
+      recBtn.addEventListener("click", async () => {
+        if (recorder && recorder.state === "recording") { recorder.stop(); return; }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const chunks = [];
+          const r = new MediaRecorder(stream);
+          recorder = r;
+          r.ondataavailable = e => chunks.push(e.data);
+          r.onstop = () => {
+            stream.getTracks().forEach(t => t.stop());
+            answers[i].audio = new Blob(chunks, { type: r.mimeType });
+            orb.classList.remove("orb--live");
+            recBtn.setAttribute("aria-pressed", "false");
+            setStatus("Recording saved.");
+            refresh();
+          };
+          r.start();
+          orb.classList.add("orb--live");
+          recBtn.setAttribute("aria-pressed", "true");
+          setStatus("Recording…");
+        } catch (err) {
+          setStatus("Microphone unavailable. You can write your answer instead.");
+        }
+      });
+
+      function reset() {
+        stopRecording();
+        answers[i] = { audio: null, text: "" };
+        closeWriting();
+        orb.classList.remove("orb--live");
+        recBtn.setAttribute("aria-pressed", "false");
+        setStatus("");
+        refresh();
+      }
+      controllers.push({ reset });
+
+      el.querySelector('[data-act="rerecord"]').addEventListener("click", reset);
+      el.querySelector('[data-act="back"]').addEventListener("click", () => show(current - 1));
+
+      nextBtn.addEventListener("click", async () => {
+        if (!last) { show(current + 1); return; }
+        stopRecording();
+        nextBtn.disabled = true;
+        nextBtn.textContent = "SENDING…";
+        setStatus("");
+        try {
+          await sendSubmission();
+          show(current + 1);
+        } catch (err) {
+          setStatus(err.message);
+        } finally {
+          nextBtn.textContent = "SUBMIT";
+          refresh();
+        }
+      });
+    });
+
+    screens[0].querySelector('[data-go="next"]').addEventListener("click", () => show(1));
+
+    // ---- Google Drive upload (via Apps Script web app) ----
+    function toBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result).split(",")[1]);
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(blob);
+      });
+    }
+
+    async function post(payload) {
+      if (PREVIEW) return;
+      if (!SUBMISSION_URL) throw new Error("Submissions are not connected yet. Please tell the researcher.");
+      let res;
+      try {
+        // text/plain keeps this a "simple" request, which Apps Script accepts without a CORS preflight
+        res = await fetch(SUBMISSION_URL, { method: "POST", body: JSON.stringify(payload) });
+      } catch (err) {
+        throw new Error("Could not send. Check your connection and try again.");
+      }
+      const out = await res.json().catch(() => null);
+      if (!out || !out.ok) throw new Error("Could not send. Please try again.");
+    }
+
+    async function sendSubmission() {
+      const items = [];
+      for (let i = 0; i < QUESTIONS.length; i++) {
+        const a = answers[i];
+        items.push({
+          question: QUESTIONS[i].text,
+          text: a.text.trim(),
+          audio: a.audio ? { mime: a.audio.type, base64: await toBase64(a.audio) } : null,
+        });
+      }
+      await post({ type: "submission", sessionId, answers: items });
+    }
+
+    // ---- Anonymous / named choice on the last screen ----
+    const whoForm = document.getElementById("who-form");
+    const whoStatus = document.getElementById("who-status");
+    const whoButtons = [document.getElementById("who-anon"), document.getElementById("who-named")];
+
+    function lockWho(msg) {
+      whoButtons.forEach(b => { b.disabled = true; });
+      whoForm.hidden = true;
+      whoStatus.textContent = msg;
+    }
+
+    document.getElementById("who-anon").addEventListener("click", async () => {
+      whoStatus.textContent = "";
+      try {
+        await post({ type: "identity", sessionId, anonymous: true });
+        lockWho("Got it. Your answers stay anonymous.");
+      } catch (err) {
+        whoStatus.textContent = err.message;
+      }
+    });
+
+    document.getElementById("who-named").addEventListener("click", () => {
+      whoStatus.textContent = "";
+      whoForm.hidden = false;
+      document.getElementById("who-name").focus();
+    });
+
+    whoForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      whoStatus.textContent = "Sending…";
+      try {
+        await post({
+          type: "identity",
+          sessionId,
+          anonymous: false,
+          name: document.getElementById("who-name").value.trim(),
+          contact: document.getElementById("who-contact").value.trim(),
+        });
+        lockWho("Thank you for sharing who you are.");
+      } catch (err) {
+        whoStatus.textContent = err.message;
+      }
+    });
+
+    // ---- Start again ----
+    document.getElementById("again").addEventListener("click", () => {
+      controllers.forEach(c => c.reset());
+      sessionId = crypto.randomUUID();
+      whoButtons.forEach(b => { b.disabled = false; });
+      whoForm.reset();
+      whoForm.hidden = true;
+      whoStatus.textContent = "";
+      show(0);
+    });
+  </script>
+</body>
+</html>
