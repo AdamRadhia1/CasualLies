@@ -24,8 +24,10 @@ function doPost(e) {
 }
 
 function saveSubmission(data) {
-  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH-mm");
-  const folder = parentFolder().createFolder(stamp + " " + data.sessionId);
+  const n = nextSubmissionNumber();
+  const folder = parentFolder().createFolder("Submission " + n);
+  // Remember which folder belongs to this session, so a name given later can rename it
+  PropertiesService.getScriptProperties().setProperty("session:" + data.sessionId, folder.getId() + "|" + n);
 
   (data.answers || []).forEach(function (a, i) {
     const n = i + 1;
@@ -49,6 +51,25 @@ function saveIdentity(data) {
     ? "Anonymous"
     : "Name: " + (data.name || "") + "\nContact: " + (data.contact || "");
   folder.createFile("Who.txt", body, MimeType.PLAIN_TEXT);
+  const name = String(data.name || "").trim().replace(/[\\\/:*?"<>|]/g, "");
+  if (!data.anonymous && name) {
+    const n = PropertiesService.getScriptProperties().getProperty("session:" + data.sessionId).split("|")[1];
+    folder.setName(name + " (Submission " + n + ")");
+  }
+}
+
+// 1, 2, 3 ... never reused, even if a submission folder is later deleted
+function nextSubmissionNumber() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const n = Number(props.getProperty("submissionCount") || 0) + 1;
+    props.setProperty("submissionCount", String(n));
+    return n;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function parentFolder() {
@@ -58,8 +79,8 @@ function parentFolder() {
 }
 
 function findSessionFolder(sessionId) {
-  const it = parentFolder().searchFolders("title contains '" + sessionId + "'");
-  return it.hasNext() ? it.next() : null;
+  const saved = PropertiesService.getScriptProperties().getProperty("session:" + sessionId);
+  return saved ? DriveApp.getFolderById(saved.split("|")[0]) : null;
 }
 
 function json(obj) {
