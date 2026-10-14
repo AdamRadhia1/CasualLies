@@ -6,7 +6,7 @@
   <title>Casually Lying</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anonymous+Pro&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #f1dcdc;
@@ -63,10 +63,16 @@
     }
     .copy p { margin: 0; }
 
+    /* Question text (screens 2-5): Anonymous Pro Bold, 14px, per Figma */
+    .screen--question .copy { font-size: 14px; font-weight: 700; }
+
     /* Screen 1 */
     .screen--intro { padding-top: 208px; }
     .eye { position: relative; width: 276px; height: 254px; flex: none; }
     .eye img { position: absolute; display: block; }
+    /* The two small circles drift slowly clockwise around the centre of the iris */
+    .eye__orbit { position: absolute; inset: 0; animation: orbit 40s linear infinite; }
+    @keyframes orbit { to { transform: rotate(360deg); } }
     .eye__iris  { inset: 0; width: 100%; height: 100%; }
     .eye__white { left: 45px;  top: 151px; width: 39px; height: 38px; }
     .eye__black { left: 191px; top: 42px;  width: 39px; height: 38px; }
@@ -104,7 +110,7 @@
       50%      { --core: 55%; --mid: 92%; filter: brightness(1.12); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .orb--live .orb__fill { animation: none; }
+      .orb--live .orb__fill, .orb-thanks, .eye__orbit { animation: none; }
     }
 
     /* Written answer: created only when "in writing" is chosen, then rises into place */
@@ -153,9 +159,19 @@
 
     /* Screen 6 */
     .screen--thanks { padding-top: 220px; }
-    .orb-thanks { display: block; width: 130px; height: 214px; }
+    .orb-thanks {
+      width: 130px;
+      height: 214px;
+      border-radius: 50%;
+      background: radial-gradient(closest-side, #F20947 var(--core), #F2D309 var(--mid), #72C5EF 100%);
+      animation: glow 2.4s ease-in-out infinite;
+    }
     .screen--thanks .copy { margin-top: 77px; }
 
+    /* After SUBMIT on the last question, the question screen turns into the anonymity prompt */
+    .screen--who .copy, .screen--who .alt-mode, .screen--who .nav-row,
+    .screen--who .record, .screen--who .back { display: none; }
+    .screen--who .orb { margin-top: 0; }
     .who { margin-top: 40px; width: 284px; max-width: 100%; text-align: center; }
     .who__choices { margin-top: 12px; display: flex; justify-content: space-between; }
     .who__form { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
@@ -186,8 +202,10 @@
   <main class="screen screen--intro" data-screen="intro">
     <div class="eye" aria-hidden="true">
       <img class="eye__iris"  src="assets/eye.svg" alt="">
-      <img class="eye__white" src="assets/pupil-white.svg" alt="">
-      <img class="eye__black" src="assets/pupil-black.svg" alt="">
+      <div class="eye__orbit">
+        <img class="eye__white" src="assets/pupil-white.svg" alt="">
+        <img class="eye__black" src="assets/pupil-black.svg" alt="">
+      </div>
     </div>
     <div class="copy">
       <p>Thank you for agreeing to be a part of my research on honesty and everyday communication. Your input means the world to me as I conduct my interviews.</p>
@@ -201,10 +219,10 @@
 
   <!-- Screen 6 -->
   <main class="screen screen--thanks" data-screen="thanks" hidden>
-    <img class="orb-thanks" src="assets/orb-thanks.svg" alt="">
+    <div class="orb-thanks" aria-hidden="true"></div>
     <p class="copy">Thank you, truly. Your participation means the world to me. This project and installation will be on view in May 2027, and I'll share more as the date gets closer. :)</p>
 
-    <section class="who" id="who">
+    <section class="who" id="who" hidden>
       <p>WOULD YOU LIKE TO SHARE WHO YOU ARE?</p>
       <div class="who__choices">
         <button type="button" id="who-anon">STAY ANONYMOUS</button>
@@ -279,6 +297,11 @@
     });
 
     const screens = [...document.querySelectorAll("main.screen")]; // intro, q1-q4, thanks
+
+    // The anonymity prompt lives on the last question screen (screen 5), revealed after SUBMIT
+    const whoSection = document.getElementById("who");
+    const lastQuestionScreen = screens[QUESTIONS.length];
+    lastQuestionScreen.appendChild(whoSection);
 
     function show(i) {
       stopRecording();
@@ -377,7 +400,10 @@
         setStatus("");
         try {
           await sendSubmission();
-          show(current + 1);
+          lastQuestionScreen.classList.add("screen--who");
+          whoSection.hidden = false;
+          whoButtons[0].focus();
+          return;
         } catch (err) {
           setStatus(err.message);
         } finally {
@@ -431,17 +457,17 @@
     const whoStatus = document.getElementById("who-status");
     const whoButtons = [document.getElementById("who-anon"), document.getElementById("who-named")];
 
-    function lockWho(msg) {
-      whoButtons.forEach(b => { b.disabled = true; });
+    function finishWho() {
+      whoStatus.textContent = "";
       whoForm.hidden = true;
-      whoStatus.textContent = msg;
+      show(screens.length - 1);
     }
 
     document.getElementById("who-anon").addEventListener("click", async () => {
       whoStatus.textContent = "";
       try {
         await post({ type: "identity", sessionId, anonymous: true });
-        lockWho("Got it. Your answers stay anonymous.");
+        finishWho();
       } catch (err) {
         whoStatus.textContent = err.message;
       }
@@ -464,7 +490,7 @@
           name: document.getElementById("who-name").value.trim(),
           contact: document.getElementById("who-contact").value.trim(),
         });
-        lockWho("Thank you for sharing who you are.");
+        finishWho();
       } catch (err) {
         whoStatus.textContent = err.message;
       }
@@ -474,7 +500,8 @@
     document.getElementById("again").addEventListener("click", () => {
       controllers.forEach(c => c.reset());
       sessionId = crypto.randomUUID();
-      whoButtons.forEach(b => { b.disabled = false; });
+      lastQuestionScreen.classList.remove("screen--who");
+      whoSection.hidden = true;
       whoForm.reset();
       whoForm.hidden = true;
       whoStatus.textContent = "";
